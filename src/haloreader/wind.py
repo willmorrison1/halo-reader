@@ -28,7 +28,7 @@ def compute_wind(
     kmeans = KMeans(n_clusters=2, n_init="auto").fit(timediff)
     centers = kmeans.cluster_centers_.flatten()
     scanstep_timediff = centers[np.argmin(centers)]
-    if 0.1 > scanstep_timediff or 30 < scanstep_timediff:
+    if 0.1 > scanstep_timediff or 240 < scanstep_timediff:
         raise SuspiciousResult("Unexpected time difference between scan steps")
     scanstep_timediff_upperbound = 2 * scanstep_timediff
     scan_indeces = -1 * np.ones_like(time.data, dtype=int)
@@ -62,7 +62,8 @@ def compute_wind(
         scan_max_intensity_.append(
             np.max(intensity.data[pick_scan], axis=0)[np.newaxis, :]
         )
-        wcomp_, rmse_ = _compute_wind_components(elevation_, azimuth_, radial_velocity_)
+        wcomp_, rmse_ = _compute_wind_components(
+            elevation_, azimuth_, radial_velocity_)
         wind_components_.append(wcomp_[np.newaxis, :, :])
         scan_rmse_.append(rmse_[np.newaxis, :])
         wind_elevation_.append(elevation_[0])
@@ -128,7 +129,24 @@ def compute_wind(
             units="degrees",
             data=np.degrees(horizontal_wind_direction),
         ),
-        "mask": mask,
+        "wind_mask": Variable(
+            name="wind_mask",
+            dimensions=radial_velocity.dimensions,
+            units="none",
+            data=mask,
+        ),
+        "wind_rmse": Variable(
+            name="wind_rmse",
+            dimensions=radial_velocity.dimensions,
+            units="degrees",
+            data=scan_rmse,
+        ),
+        "wind_max_intensity": Variable(
+            name="wind_max_intensity",
+            dimensions=radial_velocity.dimensions,
+            units=intensity.units,
+            data=scan_max_intensity,
+        ),
     }
 
 
@@ -149,7 +167,8 @@ def _compute_wind_components(
 
     w = A_inv @ radial_velocity
     r_appr = A @ w
-    rmse = np.sqrt(np.sum((r_appr - radial_velocity) ** 2, axis=0) / r_appr.shape[0])
+    rmse = np.sqrt(np.sum((r_appr - radial_velocity)
+                   ** 2, axis=0) / r_appr.shape[0])
     return w.T, rmse
 
 
@@ -170,11 +189,14 @@ def _compute_mask(comp, intensity, rmse):
         mdiff = np.max(np.abs(X - X[len(X) // 2]))
         return mdiff
 
+    neighbour_diff_thresh = 5
+
     neighbour_mask = np.any(
-        generic_filter(comp, neighbour_diff, size=(1, 3, 1)) > 5, axis=2
+        generic_filter(comp, neighbour_diff,
+                       size=(1, 3, 1)) > neighbour_diff_thresh, axis=2
     )
 
-    ## RMSE
+    # RMSE
     # rmse_th = 4.834278527280794
     rmse_th = 4.8
     return (rmse > rmse_th) | neighbour_mask

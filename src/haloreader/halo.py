@@ -244,7 +244,8 @@ class Halo:
             long_name="screened radial velocity (positive away from lidar)",
             units=self.doppler_velocity.units,
             dimensions=self.doppler_velocity.dimensions,
-            data=np.ma.masked_array(self.doppler_velocity.data, mask=screen.data),
+            data=np.ma.masked_array(
+                self.doppler_velocity.data, mask=screen.data),
         )
 
     def compute_wind(self, halobg: HaloBg) -> HaloWind:
@@ -289,13 +290,16 @@ def _convert_timevar_unit2cloudnet_time(var: Variable) -> None:
         base = datetime.datetime.strptime(match_.group(2), UNIX_TIME_FMT)
         match unit:
             case "seconds" | "minutes" | "hours" | "weeks":
-                tdelta = datetime.timedelta(**{unit: var.data[0]})  # type: ignore
+                tdelta = datetime.timedelta(
+                    **{unit: var.data[0]})  # type: ignore
             case other_unit:
                 raise ValueError(f"Unexpected unit {other_unit}")
-        new_base = (base + tdelta).replace(hour=0, minute=0, second=0, microsecond=0)
+        new_base = (base + tdelta).replace(hour=0,
+                                           minute=0, second=0, microsecond=0)
         base_diff = (base - new_base).total_seconds()
         scale = datetime.timedelta(**{unit: 1}).total_seconds()  # type: ignore
-        new_time_in_hours = np.array([(base_diff + scale * t) / 3600 for t in var.data])
+        new_time_in_hours = np.array(
+            [(base_diff + scale * t) / 3600 for t in var.data])
         new_unit = new_base.strftime(CLOUDNET_TIME_UNIT_FMT)
         var.data = new_time_in_hours
         var.units = new_unit
@@ -307,7 +311,8 @@ def _sorted_halo_list_key(halo: Halo) -> float:
     if not is_ndarray(halo.metadata.start_time.data):
         raise TypeError
     if halo.metadata.start_time.units != UNIX_TIME_UNIT:
-        raise ValueError(f"Unexpected time units: {halo.metadata.start_time.units}")
+        raise ValueError(
+            f"Unexpected time units: {halo.metadata.start_time.units}")
     if len(halo.metadata.start_time.data) != 1:
         raise ValueError
     start_time = halo.metadata.start_time.data[0]
@@ -465,7 +470,8 @@ def _duplicate_time_mask(time: np.ndarray) -> np.ndarray:
     _mask = np.isclose(np.diff(time), 0)
     nremoved = _mask.sum()
     if nremoved > 0:
-        log.debug("Removed %d/%d profiles (duplicate timestamps)", nremoved, len(time))
+        log.debug("Removed %d/%d profiles (duplicate timestamps)",
+                  nremoved, len(time))
     return np.logical_not(np.insert(_mask, 0, False))
 
 
@@ -502,4 +508,7 @@ class HaloWind:
     vertical_wind: Variable
     horizontal_wind_speed: Variable
     horizontal_wind_direction: Variable
-    mask: np.ndarray
+    # mask: np.ndarray
+    wind_mask: Variable
+    wind_rmse: Variable
+    wind_max_intensity: Variable
