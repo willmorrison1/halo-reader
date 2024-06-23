@@ -41,6 +41,7 @@ class Halo:
     doppler_velocity_screened: Variable | None = None
     pitch: Variable | None = None
     roll: Variable | None = None
+    screen: Variable | None = None
 
     def print_head(self) -> None:
         for attr_name in self.__dataclass_fields__.keys():
@@ -215,16 +216,18 @@ class Halo:
             self.metadata.wavelength,
         )
 
-    def compute_noise_screen(self) -> Variable:
+    def compute_noise_screen(self, **kwargs) -> Variable:
         if not isinstance(self.intensity, Variable):
             raise TypeError
         return haloreader.screen.compute_noise_screen(
-            self.intensity, self.doppler_velocity, self.range
+            self.intensity, self.doppler_velocity, self.range, **kwargs,
         )
 
     def compute_beta_screened(self, screen: Variable) -> None:
         if not isinstance(self.beta, Variable):
             raise TypeError
+        data = np.array(self.beta.data)
+        data[screen.data] = np.nan
         self.beta_screened = Variable(
             name="beta_screened",
             long_name="screened attenuated backscatter coefficient",
@@ -233,20 +236,29 @@ class Halo:
             ),
             units="m-1 sr-1",
             dimensions=self.beta.dimensions,
-            data=np.ma.masked_array(self.beta.data, mask=screen.data),
+            data=data  # np.ma.masked_array(self.beta.data, mask=screen.data),
         )
 
     def compute_doppler_velocity_screened(self, screen: Variable) -> None:
         if not isinstance(self.beta, Variable):
             raise TypeError
+        data = np.array(self.doppler_velocity.data)
+        data[screen.data] = np.nan
         self.doppler_velocity_screened = Variable(
             name="doppler_velocity_screened",
             long_name="screened radial velocity (positive away from lidar)",
             units=self.doppler_velocity.units,
             dimensions=self.doppler_velocity.dimensions,
-            data=np.ma.masked_array(
-                self.doppler_velocity.data, mask=screen.data),
+            data=data,  # np.ma.masked_array(
+            # self.doppler_velocity.data, mask=screen.data),
         )
+
+    def apply_screen(self, screen: Variable) -> None:
+        if not isinstance(screen, Variable):
+            raise TypeError
+        self.compute_doppler_velocity_screened(screen)
+        self.compute_beta_screened(screen)
+        self.screen = screen
 
     def compute_wind(self, halobg: HaloBg) -> HaloWind:
         if not is_ndarray(self.range.data):
@@ -267,7 +279,7 @@ class Halo:
             self.range,
             self.elevation,
             self.azimuth,
-            self.doppler_velocity,
+            self.doppler_velocity_screened or self.doppler_velocity,
             intensity_bg_corrected,
         )
         return HaloWind(metadata=self.metadata, range=self.range, **wind_dict)
@@ -508,7 +520,6 @@ class HaloWind:
     vertical_wind: Variable
     horizontal_wind_speed: Variable
     horizontal_wind_direction: Variable
-    # mask: np.ndarray
     wind_mask: Variable
     wind_rmse: Variable
     wind_max_intensity: Variable
