@@ -260,7 +260,7 @@ class Halo:
         self.compute_beta_screened(screen)
         self.screen = screen
 
-    def compute_wind(self, halobg: HaloBg) -> HaloWind:
+    def compute_wind(self, halobg: HaloBg, **kwargs) -> HaloWind:
         if not is_ndarray(self.range.data):
             raise TypeError
         halobg_sliced = halobg.slice_range(len(self.range.data))
@@ -279,8 +279,9 @@ class Halo:
             self.range,
             self.elevation,
             self.azimuth,
-            self.doppler_velocity_screened or self.doppler_velocity,
+            self.doppler_velocity,
             intensity_bg_corrected,
+            **kwargs,
         )
         return HaloWind(metadata=self.metadata, range=self.range, **wind_dict)
 
@@ -520,6 +521,9 @@ class HaloWind:
     vertical_wind: Variable
     horizontal_wind_speed: Variable
     horizontal_wind_direction: Variable
-    wind_mask: Variable
+    # wind_mask: Variable
     wind_rmse: Variable
     wind_max_intensity: Variable
+    wind_min_intensity: Variable
+    wind_mean_intensity: Variable
+    nrays_valid: Variable

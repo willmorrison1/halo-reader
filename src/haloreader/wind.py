@@ -13,6 +13,7 @@ def compute_wind(
     azimuth: Variable,
     radial_velocity: Variable,
     intensity: Variable,
+    **kwargs,
 ) -> dict[str, Variable]:
     """
     Parameters
@@ -23,7 +24,8 @@ def compute_wind(
     azimuth
         Azimuth from North
     """
-
+    min_valid_intensity = kwargs.get(
+        "min_valid_intensity", 1.0025)
     timediff = np.diff(time.data).reshape(-1, 1)
     kmeans = KMeans(n_clusters=2, n_init="auto").fit(timediff)
     centers = kmeans.cluster_centers_.flatten()
@@ -44,6 +46,9 @@ def compute_wind(
     wind_elevation_ = []
     wind_components_ = []
     scan_max_intensity_ = []
+    scan_min_intensity_ = []
+    scan_mean_intensity_ = []
+    scan_n_valid_intensity_ = []
     scan_rmse_ = []
 
     if len(elevation.data) == 0 or (
@@ -62,6 +67,16 @@ def compute_wind(
         scan_max_intensity_.append(
             np.max(intensity.data[pick_scan], axis=0)[np.newaxis, :]
         )
+        scan_mean_intensity_.append(
+            np.mean(intensity.data[pick_scan], axis=0)[np.newaxis, :]
+        )
+        scan_min_intensity_.append(
+            np.min(intensity.data[pick_scan], axis=0)[np.newaxis, :]
+        )
+        scan_n_valid_intensity_.append(
+            np.sum(intensity.data[pick_scan] >
+                   min_valid_intensity, axis=0)[np.newaxis, :]
+        )
         wcomp_, rmse_ = _compute_wind_components(
             elevation_, azimuth_, radial_velocity_)
         wind_components_.append(wcomp_[np.newaxis, :, :])
@@ -78,8 +93,11 @@ def compute_wind(
     )
     horizontal_wind_direction[horizontal_wind_direction < 0] += 2 * np.pi
     scan_max_intensity = np.concatenate(scan_max_intensity_)
+    scan_min_intensity = np.concatenate(scan_min_intensity_)
+    scan_mean_intensity = np.concatenate(scan_mean_intensity_)
+    scan_n_valid_intensity = np.concatenate(scan_n_valid_intensity_)
     scan_rmse = np.concatenate(scan_rmse_)
-    mask = _compute_mask(wind_components, scan_max_intensity, scan_rmse)
+    # mask = _compute_mask(wind_components, scan_max_intensity, scan_rmse)
 
     height = range_.data * np.sin(np.deg2rad(elevation.data[0]))
     return {
@@ -129,12 +147,12 @@ def compute_wind(
             units="degrees",
             data=np.degrees(horizontal_wind_direction),
         ),
-        "wind_mask": Variable(
-            name="wind_mask",
-            dimensions=radial_velocity.dimensions,
-            units="none",
-            data=mask,
-        ),
+        # "wind_mask": Variable(
+        #     name="wind_mask",
+        #     dimensions=radial_velocity.dimensions,
+        #     units="none",
+        #     data=mask,
+        # ),
         "wind_rmse": Variable(
             name="wind_rmse",
             dimensions=radial_velocity.dimensions,
@@ -146,6 +164,26 @@ def compute_wind(
             dimensions=radial_velocity.dimensions,
             units=intensity.units,
             data=scan_max_intensity,
+        ),
+        "wind_min_intensity": Variable(
+            name="wind_min_intensity",
+            dimensions=radial_velocity.dimensions,
+            units=intensity.units,
+            data=scan_min_intensity,
+        ),
+        "wind_mean_intensity": Variable(
+            name="wind_mean_intensity",
+            dimensions=radial_velocity.dimensions,
+            units=intensity.units,
+            data=scan_mean_intensity,
+        ),
+        "nrays_valid": Variable(
+            name="nrays_valid",
+            dimensions=radial_velocity.dimensions,
+            units="None",
+            data=scan_n_valid_intensity,
+            comment=(f"Number of rays in the scan with intensity values "
+                     f"greater than {min_valid_intensity}")
         ),
     }
 
