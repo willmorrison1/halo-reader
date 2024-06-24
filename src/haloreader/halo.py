@@ -263,24 +263,26 @@ class Halo:
     def compute_wind(self, halobg: HaloBg, **kwargs) -> HaloWind:
         if not is_ndarray(self.range.data):
             raise TypeError
-        halobg_sliced = halobg.slice_range(len(self.range.data))
-        p_amp = halobg_sliced.amplifier_noise()
-        intensity_bg_corrected = (
-            haloreader.background_correction.background_measurement_correction(
-                self.time,
-                self.intensity_raw,
-                halobg_sliced.time,
-                halobg_sliced.background,
-                p_amp,
+        do_bg = kwargs.get("do_bg", True)
+        if do_bg:
+            halobg_sliced = halobg.slice_range(len(self.range.data))
+            p_amp = halobg_sliced.amplifier_noise()
+            intensity_bg_corrected = (
+                haloreader.background_correction.background_measurement_correction(
+                    self.time,
+                    self.intensity_raw,
+                    halobg_sliced.time,
+                    halobg_sliced.background,
+                    p_amp,
+                )
             )
-        )
         wind_dict = haloreader.wind.compute_wind(
             self.time,
             self.range,
             self.elevation,
             self.azimuth,
             self.doppler_velocity,
-            intensity_bg_corrected,
+            intensity_bg_corrected if do_bg else self.intensity_raw,
             **kwargs,
         )
         return HaloWind(metadata=self.metadata, range=self.range, **wind_dict)

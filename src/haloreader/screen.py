@@ -4,7 +4,7 @@ from scipy.ndimage import uniform_filter
 from haloreader.type_guards import is_ndarray
 from haloreader.variable import Variable
 
-INTENSITY_THRESHOLD_DEFAULT = 1.0025
+INTENSITY_THRESHOLD_DEFAULT = 1.0075857757502917
 VELOCITY_THRESHOLD_DEFAULT = 2
 
 

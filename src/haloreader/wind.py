@@ -25,7 +25,7 @@ def compute_wind(
         Azimuth from North
     """
     min_valid_intensity = kwargs.get(
-        "min_valid_intensity", 1.0025)
+        "min_valid_intensity", 1.0075857757502917)
     timediff = np.diff(time.data).reshape(-1, 1)
     kmeans = KMeans(n_clusters=2, n_init="auto").fit(timediff)
     centers = kmeans.cluster_centers_.flatten()
