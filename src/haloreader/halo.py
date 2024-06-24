@@ -260,11 +260,10 @@ class Halo:
         self.compute_beta_screened(screen)
         self.screen = screen
 
-    def compute_wind(self, halobg: HaloBg, **kwargs) -> HaloWind:
+    def compute_wind(self, halobg: HaloBg | None, **kwargs) -> HaloWind:
         if not is_ndarray(self.range.data):
             raise TypeError
-        do_bg = kwargs.get("do_bg", True)
-        if do_bg:
+        if halobg:
             halobg_sliced = halobg.slice_range(len(self.range.data))
             p_amp = halobg_sliced.amplifier_noise()
             intensity_bg_corrected = (
@@ -282,7 +281,7 @@ class Halo:
             self.elevation,
             self.azimuth,
             self.doppler_velocity,
-            intensity_bg_corrected if do_bg else self.intensity_raw,
+            intensity_bg_corrected if halobg else self.intensity_raw,
             **kwargs,
         )
         return HaloWind(metadata=self.metadata, range=self.range, **wind_dict)
