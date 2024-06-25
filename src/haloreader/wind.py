@@ -26,6 +26,8 @@ def compute_wind(
     """
     min_valid_intensity = kwargs.get(
         "min_valid_intensity", 1.0075857757502917)
+    elevation_abs_diff_thresh = kwargs.get(
+        "elevation_abs_diff_thresh", 0.2)
     timediff = np.diff(time.data).reshape(-1, 1)
     kmeans = KMeans(n_clusters=2, n_init="auto").fit(timediff)
     centers = kmeans.cluster_centers_.flatten()
@@ -52,9 +54,11 @@ def compute_wind(
     scan_rmse_ = []
 
     if len(elevation.data) == 0 or (
-        not np.allclose(np.round(elevation.data, 1), elevation.data[0])
+        not np.allclose(
+            elevation.data, elevation.data[0], atol=elevation_abs_diff_thresh)
     ):
-        raise UnexpectedInput
+        raise UnexpectedInput(("Unexpected differences in elevation found "
+                               f"greater than {elevation_abs_diff_thresh} m"))
 
     for j in range(nscans):
         pick_scan = scan_indeces == j
@@ -206,7 +210,7 @@ def _compute_wind_components(
     w = A_inv @ radial_velocity
     r_appr = A @ w
     rmse = np.sqrt(np.sum((r_appr - radial_velocity)
-                   ** 2, axis=0) / r_appr.shape[0])
+                          ** 2, axis=0) / r_appr.shape[0])
     return w.T, rmse
 
 
