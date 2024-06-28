@@ -32,7 +32,7 @@ def compute_wind(
     kmeans = KMeans(n_clusters=2, n_init="auto").fit(timediff)
     centers = kmeans.cluster_centers_.flatten()
     scanstep_timediff = centers[np.argmin(centers)]
-    if 0.1 > scanstep_timediff or 240 < scanstep_timediff:
+    if 0.1 > scanstep_timediff or 1440 < scanstep_timediff:
         raise SuspiciousResult("Unexpected time difference between scan steps")
     scanstep_timediff_upperbound = 2 * scanstep_timediff
     scan_indeces = -1 * np.ones_like(time.data, dtype=int)
