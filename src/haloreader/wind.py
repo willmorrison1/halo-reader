@@ -28,6 +28,8 @@ def compute_wind(
         "min_valid_intensity", 1.0075857757502917)
     elevation_abs_diff_thresh = kwargs.get(
         "elevation_abs_diff_thresh", 0.2)
+    elevation_expected_value = kwargs.get(
+        "elevation_expected_value", elevation.data[0])
     timediff = np.diff(time.data).reshape(-1, 1)
     kmeans = KMeans(n_clusters=2, n_init="auto").fit(timediff)
     centers = kmeans.cluster_centers_.flatten()
@@ -55,10 +57,12 @@ def compute_wind(
 
     if len(elevation.data) == 0 or (
         not np.allclose(
-            elevation.data, elevation.data[0], atol=elevation_abs_diff_thresh)
+            elevation.data, elevation_expected_value, atol=elevation_abs_diff_thresh)
     ):
         raise UnexpectedInput(("Unexpected differences in elevation found "
                                f"greater than {elevation_abs_diff_thresh} m"))
+    # the elevation data are all within the threshold, so set the elevation to the expected value
+    elevation.data = np.array(np.repeat(elevation_expected_value, len(elevation.data)))
 
     for j in range(nscans):
         pick_scan = scan_indeces == j
